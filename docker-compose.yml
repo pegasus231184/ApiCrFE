@@ -8,7 +8,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://facturacion_user:facturacion_pass@db:5432/facturacion_cr
       - REDIS_URL=redis://redis:6379
-      - HACIENDA_BASE_URL=${HACIENDA_BASE_URL}
+      - HACIENDA_BASE_URL=https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1/
       - HACIENDA_TOKEN_URL=${HACIENDA_TOKEN_URL}
       - HACIENDA_CLIENT_ID=${HACIENDA_CLIENT_ID}
       - HACIENDA_CLIENT_SECRET=${HACIENDA_CLIENT_SECRET}
