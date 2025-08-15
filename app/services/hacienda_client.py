@@ -105,7 +105,7 @@ class HaciendaClient:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/recepcion",
+                    self.base_url,  # Ya incluye el endpoint completo
                     headers=headers,
                     json=payload,
                     timeout=60.0
@@ -152,7 +152,7 @@ class HaciendaClient:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    f"{self.base_url}/recepcion/{clave}",
+                    f"{self.base_url}/{clave}",  # Ya incluye el endpoint completo
                     headers=headers,
                     timeout=30.0
                 )

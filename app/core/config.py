@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     
     # Ministerio de Hacienda API
-    hacienda_base_url: str = "https://api-sandbox.comprobanteselectronicos.go.cr"
+    hacienda_base_url: str = "https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1"
     hacienda_token_url: str = "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token"
     hacienda_client_id: str = "api-stag"
     hacienda_client_secret: Optional[str] = ""
