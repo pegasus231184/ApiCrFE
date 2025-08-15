@@ -304,9 +304,9 @@ alembic upgrade head
 
 ### Contacto
 
-- **Issues**: [GitHub Issues](link-to-issues)
-- **Email**: soporte@empresa.com
-- **Documentación**: [Wiki del proyecto](link-to-wiki)
+- **Issues**: [GitHub Issues](https://github.com/pegasus231184/ApiCrFE/issues)
+- **Email**: allan.martinez@simplexityla.com
+- **LinkedIn**: [Perfil del desarrollador](https://github.com/pegasus231184/ApiCrFE)
 
 ---
 
