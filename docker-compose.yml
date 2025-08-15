@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://facturacion_user:facturacion_pass@db:5432/facturacion_cr
+      - REDIS_URL=redis://redis:6379
+      - HACIENDA_BASE_URL=https://api-sandbox.comprobanteselectronicos.go.cr
+      - HACIENDA_TOKEN_URL=https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token
+      - HACIENDA_CLIENT_ID=api-stag
+      - HACIENDA_CLIENT_SECRET=
+      - HACIENDA_USERNAME=cpj-3-102-776079@stag.comprobanteselectronicos.go.cr
+      - HACIENDA_PASSWORD=%B^m}n>P|?YV%mYo!:lc
+      - HACIENDA_SANDBOX=true
+      - CERTIFICATE_PATH=certificados/310277607903.p12
+      - CERTIFICATE_PASSWORD=2311
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./certificados:/app/certificados:ro
+      - ./app/xsd:/app/app/xsd:ro
+    restart: unless-stopped
+
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_DB=facturacion_cr
+      - POSTGRES_USER=facturacion_user
+      - POSTGRES_PASSWORD=facturacion_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
