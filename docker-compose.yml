@@ -8,15 +8,15 @@ services:
     environment:
       - DATABASE_URL=postgresql://facturacion_user:facturacion_pass@db:5432/facturacion_cr
       - REDIS_URL=redis://redis:6379
-      - HACIENDA_BASE_URL=https://api-sandbox.comprobanteselectronicos.go.cr
-      - HACIENDA_TOKEN_URL=https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token
-      - HACIENDA_CLIENT_ID=api-stag
-      - HACIENDA_CLIENT_SECRET=
-      - HACIENDA_USERNAME=cpj-3-102-776079@stag.comprobanteselectronicos.go.cr
-      - HACIENDA_PASSWORD=%B^m}n>P|?YV%mYo!:lc
-      - HACIENDA_SANDBOX=true
-      - CERTIFICATE_PATH=certificados/310277607903.p12
-      - CERTIFICATE_PASSWORD=2311
+      - HACIENDA_BASE_URL=${HACIENDA_BASE_URL}
+      - HACIENDA_TOKEN_URL=${HACIENDA_TOKEN_URL}
+      - HACIENDA_CLIENT_ID=${HACIENDA_CLIENT_ID}
+      - HACIENDA_CLIENT_SECRET=${HACIENDA_CLIENT_SECRET}
+      - HACIENDA_USERNAME=${HACIENDA_USERNAME}
+      - HACIENDA_PASSWORD=${HACIENDA_PASSWORD}
+      - HACIENDA_SANDBOX=${HACIENDA_SANDBOX}
+      - CERTIFICATE_PATH=${CERTIFICATE_PATH}
+      - CERTIFICATE_PASSWORD=${CERTIFICATE_PASSWORD}
     depends_on:
       - db
       - redis

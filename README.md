@@ -2,6 +2,18 @@
 
 API REST completa para generar, firmar y enviar documentos electrónicos según la normativa v4.4 del Ministerio de Hacienda de Costa Rica. Construida con **FastAPI** e incluye documentación **Swagger** automática.
 
+## ⚠️ IMPORTANTE - SEGURIDAD
+
+**NUNCA subas credenciales reales a Git!** Este repositorio incluye:
+- `.env.example` - Plantilla de configuración (SIN credenciales reales)
+- `.gitignore` - Excluye archivos sensibles
+- `certificados/` - Carpeta excluida de Git
+
+**Para usar en producción:**
+1. Copia `.env.example` a `.env`
+2. Obtén credenciales oficiales del Ministerio de Hacienda
+3. Configura tu certificado digital (.p12)
+
 ## 🚀 Características
 
 - ✅ **Generación de XML** según esquemas oficiales v4.4

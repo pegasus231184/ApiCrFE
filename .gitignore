@@ -102,14 +102,23 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environments - SECURITY CRITICAL
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# SECURITY: Credenciales y datos sensibles
+*.env
+.env.local
+.env.production
+.env.staging
+GUIA_CREDENCIALES_HACIENDA.md
 
 # Spyder project settings
 .spyderproject
