@@ -154,6 +154,106 @@ async def crear_tiquete(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear tiquete: {str(e)}")
 
+@router.post("/notas-debito", response_model=FacturaResponse, summary="Crear Nota de Débito")
+async def crear_nota_debito(
+    nota_data: FacturaCreate,
+    factura_referencia: str,
+    motivo: str,
+    firmar: bool = True,
+    enviar_hacienda: bool = True
+):
+    """
+    Crear una nota de débito electrónica.
+    
+    - **nota_data**: Datos de la nota de débito
+    - **factura_referencia**: Clave de la factura que se está debitando
+    - **motivo**: Motivo de la nota de débito
+    """
+    try:
+        consecutivo = await hacienda_client.obtener_consecutivo("02")
+        
+        nota = FacturaElectronica(
+            codigo_actividad=nota_data.codigo_actividad,
+            numero_consecutivo=consecutivo,
+            fecha_emision=datetime.now(),
+            emisor=nota_data.emisor,
+            receptor=nota_data.receptor,
+            condicion_venta=nota_data.condicion_venta,
+            medio_pago=nota_data.medio_pago,
+            detalles_servicio=nota_data.detalles_servicio,
+            resumen_factura=nota_data.resumen_factura
+        )
+        
+        xml_sin_firmar = xml_generator.generar_xml_factura(nota)
+        
+        xml_firmado = None
+        if firmar:
+            xml_firmado = signer.firmar_xml(xml_sin_firmar)
+        
+        return FacturaResponse(
+            clave=nota.clave,
+            numero_consecutivo=consecutivo,
+            fecha_emision=nota.fecha_emision,
+            estado="generada",
+            xml_firmado=xml_firmado if firmar else xml_sin_firmar
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear nota de débito: {str(e)}")
+
+@router.post("/facturas-exportacion", response_model=FacturaResponse, summary="Crear Factura de Exportación")
+async def crear_factura_exportacion(
+    factura_data: FacturaCreate,
+    background_tasks: BackgroundTasks,
+    firmar: bool = True,
+    enviar_hacienda: bool = True
+):
+    """
+    Crear una factura de exportación electrónica.
+    
+    - **factura_data**: Datos de la factura de exportación
+    - **firmar**: Si se debe firmar digitalmente el documento (default: True)
+    - **enviar_hacienda**: Si se debe enviar automáticamente a Hacienda (default: True)
+    """
+    try:
+        consecutivo = await hacienda_client.obtener_consecutivo("05")
+        
+        factura = FacturaElectronica(
+            codigo_actividad=factura_data.codigo_actividad,
+            numero_consecutivo=consecutivo,
+            fecha_emision=datetime.now(),
+            emisor=factura_data.emisor,
+            receptor=factura_data.receptor,
+            condicion_venta=factura_data.condicion_venta,
+            plazo_credito=factura_data.plazo_credito,
+            medio_pago=factura_data.medio_pago,
+            detalles_servicio=factura_data.detalles_servicio,
+            resumen_factura=factura_data.resumen_factura
+        )
+        
+        xml_sin_firmar = xml_generator.generar_xml_factura(factura)
+        
+        xml_firmado = None
+        if firmar:
+            try:
+                xml_firmado = signer.firmar_xml(xml_sin_firmar)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Error al firmar documento: {str(e)}")
+        
+        if enviar_hacienda and xml_firmado:
+            background_tasks.add_task(enviar_a_hacienda, factura.clave, xml_firmado)
+        
+        return FacturaResponse(
+            clave=factura.clave,
+            numero_consecutivo=consecutivo,
+            fecha_emision=factura.fecha_emision,
+            estado="generada" if not enviar_hacienda else "enviando",
+            xml_firmado=xml_firmado if firmar else xml_sin_firmar
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear factura de exportación: {str(e)}")
+
 async def enviar_a_hacienda(clave: str, xml_firmado: str):
     """
     Tarea en background para enviar documento a Hacienda
