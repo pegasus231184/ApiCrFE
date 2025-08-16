@@ -3,6 +3,8 @@ import base64
 from typing import Dict, Any, Optional
 from app.core.config import settings
 import asyncio
+import secrets
+import string
 
 class HaciendaClient:
     def __init__(self):
@@ -78,6 +80,24 @@ class HaciendaClient:
             except Exception as e:
                 print(f"❌ Excepción obteniendo token: {e}")
                 raise
+    
+    async def generar_clave(self, pais: str, dia: str, mes: str, anno: str, 
+                           cedula_emisor: str, tipo_documento: str, numero_consecutivo: str,
+                           situacion: str = "1", codigo_seguridad: str = None) -> str:
+        """Generar clave única para documentos electrónicos"""
+        if not codigo_seguridad:
+            codigo_seguridad = ''.join(secrets.choice(string.digits) for _ in range(8))
+        
+        # Formato: PAIS + DDMMYY + CEDULA + TIPO_DOC + CONSECUTIVO + SITUACION + SEGURIDAD
+        clave = f"{pais}{dia}{mes}{anno}{cedula_emisor}{tipo_documento}{numero_consecutivo}{situacion}{codigo_seguridad}"
+        return clave
+    
+    async def obtener_consecutivo(self, tipo_documento: str) -> str:
+        """Obtener próximo consecutivo para un tipo de documento"""
+        # Por ahora generar un consecutivo simple
+        import random
+        consecutivo = f"{tipo_documento}{str(random.randint(1000000, 9999999)).zfill(8)}"
+        return consecutivo
     
     async def enviar_documento(self, clave: str, xml_firmado: str) -> Dict[str, Any]:
         """Enviar documento electrónico a Hacienda"""
