@@ -293,7 +293,8 @@ class PDFGeneratorOfficial:
             ['Fecha:', self._formatear_fecha(datos.get('fecha_emision', ''))],
             ['Clave:', datos.get('clave', '')],
             ['Condición de Venta:', self._obtener_condicion_venta(datos.get('condicion_venta', ''))],
-            ['Medio de Pago:', ', '.join(self._obtener_medios_pago(datos.get('medio_pago', [])))]
+            ['Medio de Pago:', ', '.join(self._obtener_medios_pago(datos.get('medio_pago', [])))],
+            ['Moneda:', 'Colones Costarricenses (CRC)']
         ]
         
         table = Table(data, colWidths=[40*mm, 120*mm])
@@ -323,7 +324,7 @@ class PDFGeneratorOfficial:
         
         # Crear tabla de dos columnas
         data = [
-            ['<b>DATOS DEL RECEPTOR</b>', ''],
+            ['DATOS DEL RECEPTOR', ''],
             ['Nombre:', receptor.get('nombre', '')],
             ['Identificación:', f"{receptor.get('identificacion_numero', '')}"],
             ['Email:', receptor.get('correo_electronico', '')]
