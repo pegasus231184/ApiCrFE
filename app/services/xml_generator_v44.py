@@ -174,10 +174,25 @@ class XMLGeneratorV44:
         
         # Validar y asignar código de moneda
         codigo_moneda = resumen_completo.get('codigo_tipo_moneda', 'CRC')
+        
+        # Limpiar el código de moneda en caso de que venga con prefijo de enum o sea un objeto enum
+        if hasattr(codigo_moneda, 'value'):
+            # Es un enum, obtener el valor
+            codigo_moneda = codigo_moneda.value
+        elif isinstance(codigo_moneda, str) and 'TipoMoneda.' in codigo_moneda:
+            # Es un string con prefijo de enum
+            codigo_moneda = codigo_moneda.replace('TipoMoneda.', '')
+        elif isinstance(codigo_moneda, str) and codigo_moneda.startswith('TipoMoneda.'):
+            # Otro formato de enum serializado
+            codigo_moneda = codigo_moneda.split('.')[-1]
+        
         es_valida, mensaje = validar_moneda(codigo_moneda)
         if not es_valida:
             logger.warning(f"⚠️ Código de moneda: {mensaje}. Usando CRC por defecto.")
             codigo_moneda = 'CRC'
+        
+        # Asignar el código de moneda limpio
+        resumen_completo['codigo_tipo_moneda'] = codigo_moneda
         
         # Valores por defecto para campos obligatorios
         defaults = {

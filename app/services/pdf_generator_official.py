@@ -412,7 +412,7 @@ class PDFGeneratorOfficial:
             ['Total Exento:', self._formatear_moneda(resumen.get('total_exento', '0'))],
             ['Total Impuestos:', self._formatear_moneda(resumen.get('total_impuesto', '0'))],
             ['', ''],
-            ['<b>TOTAL A PAGAR:</b>', f"<b>{self._formatear_moneda(resumen.get('total_comprobante', '0'))}</b>"]
+            ['TOTAL A PAGAR:', self._formatear_moneda(resumen.get('total_comprobante', '0'))]
         ]
         
         table = Table(data, colWidths=[40*mm, 30*mm], hAlign='RIGHT')
@@ -538,12 +538,12 @@ class PDFGeneratorOfficial:
             return numero_str
     
     def _formatear_moneda(self, monto_str: str) -> str:
-        """Formatear monto como moneda"""
+        """Formatear monto como moneda costarricense"""
         try:
             monto = float(monto_str)
-            return f"₡{monto:,.2f}"
+            return f"CRC {monto:,.2f}"
         except:
-            return monto_str
+            return f"CRC {monto_str}"
 
 # Instancia global
 pdf_generator_official = PDFGeneratorOfficial()

@@ -197,6 +197,13 @@ class XMLDigitalSignerProduction:
             parser = etree.XMLParser(remove_blank_text=True)
             xml_doc = etree.fromstring(xml_content.encode('utf-8'), parser)
             
+            # Remover cualquier firma existente (simulada o anterior)
+            ns_ds = "http://www.w3.org/2000/09/xmldsig#"
+            signatures_to_remove = xml_doc.xpath(".//ds:Signature", namespaces={'ds': ns_ds})
+            for signature in signatures_to_remove:
+                signature.getparent().remove(signature)
+                logger.info("🗑️ Removed existing signature element")
+            
             # Calcular digest del documento completo (antes de agregar firma)
             document_digest = self._calculate_digest(xml_doc)
             logger.info(f"📊 Document digest calculated: {document_digest[:20]}...")
