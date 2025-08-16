@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
+    # Amazon SES Configuration
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_region: str = "us-east-1"
+    ses_from_email: str = "noreply@simplexityla.com"
+    ses_from_name: str = "API Facturacion Electronica CR"
+    
     class Config:
         env_file = ".env"
 
