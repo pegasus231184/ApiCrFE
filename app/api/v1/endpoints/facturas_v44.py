@@ -5,7 +5,7 @@ from app.services.xml_generator_v44 import xml_generator_v44
 from app.services.xsd_validator import xsd_validator
 from app.services.pdf_generator_official import pdf_generator_official
 from app.services.email_service import email_service
-from app.services.xml_signer_simple import signer
+from app.services.xml_signer_production import signer_production as signer
 from app.services.hacienda_client import HaciendaClient
 from app.core.config import settings
 import uuid
@@ -207,6 +207,21 @@ async def validar_configuracion_xsd():
         'ruta_xsd': info['ruta_xsd'],
         'version': info['version'],
         'namespace': info['namespace']
+    }
+
+@router.get("/certificado", summary="Información del certificado digital")
+async def obtener_info_certificado():
+    """
+    Obtener información del certificado digital cargado
+    """
+    info = signer.obtener_info_certificado()
+    return {
+        'certificado': info,
+        'firma_digital': {
+            'disponible': info.get('disponible', False),
+            'tipo': 'Producción' if info.get('disponible') else 'Simulada',
+            'algoritmo': 'RSA-SHA256' if info.get('disponible') else 'Simulado'
+        }
     }
 
 async def enviar_a_hacienda(clave: str, xml_firmado: str):
