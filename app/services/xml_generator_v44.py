@@ -2,6 +2,7 @@ from jinja2 import Template
 from datetime import datetime
 from typing import Dict, Any, List
 import logging
+from app.core.reference_data import validar_ubicacion, validar_moneda, MONEDAS_OFICIALES
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,18 @@ class XMLGeneratorV44:
             if campo not in data or data[campo] is None:
                 raise ValueError(f"Campo obligatorio faltante: {campo}")
         
+        # Validar ubicación del emisor con datos oficiales
+        if 'emisor' in data and 'ubicacion' in data['emisor']:
+            ubicacion = data['emisor']['ubicacion']
+            if all(k in ubicacion for k in ['provincia', 'canton', 'distrito']):
+                es_valida, mensaje = validar_ubicacion(
+                    ubicacion['provincia'],
+                    ubicacion['canton'], 
+                    ubicacion['distrito']
+                )
+                if not es_valida:
+                    logger.warning(f"⚠️ Ubicación del emisor: {mensaje}")
+        
         # Validar detalles de servicio
         if not data['detalles_servicio'] or len(data['detalles_servicio']) == 0:
             raise ValueError("Debe incluir al menos una línea de detalle")
@@ -77,12 +90,35 @@ class XMLGeneratorV44:
         data_procesada['detalles_servicio'] = self._completar_detalles_servicio(data['detalles_servicio'])
         
         # Completar resumen de factura
-        data_procesada['resumen_factura'] = self._completar_resumen_factura(data['resumen_factura'])
+        data_procesada['resumen'] = self._completar_resumen_factura(data['resumen_factura'])
         
         # Generar firma digital
         data_procesada['firma_digital'] = self._generar_firma_digital(data['clave'])
         
+        # Asegurar que todos los valores numéricos no sean None
+        self._limpiar_valores_none(data_procesada)
+        
         return data_procesada
+        
+    def _limpiar_valores_none(self, data: Dict[str, Any]):
+        """Limpiar valores None que pueden causar errores en el template"""
+        # Limpiar detalles de servicio
+        if 'detalles_servicio' in data:
+            for detalle in data['detalles_servicio']:
+                for key, value in detalle.items():
+                    if value is None and key in ['cantidad', 'precio_unitario', 'monto_total', 'subtotal', 'impuesto_neto', 'monto_total_linea']:
+                        detalle[key] = 0.0
+                if 'impuestos' in detalle and detalle['impuestos']:
+                    for impuesto in detalle['impuestos']:
+                        for key, value in impuesto.items():
+                            if value is None and key in ['tarifa', 'monto']:
+                                impuesto[key] = 0.0
+        
+        # Limpiar resumen
+        if 'resumen' in data:
+            for key, value in data['resumen'].items():
+                if value is None:
+                    data['resumen'][key] = 0.0
     
     def _completar_detalles_servicio(self, detalles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Completar detalles de servicio con campos calculados"""
@@ -97,14 +133,20 @@ class XMLGeneratorV44:
             
             # Calcular subtotal si no existe
             if 'subtotal' not in detalle_completo:
-                subtotal = detalle_completo['cantidad'] * detalle_completo['precio_unitario']
+                from decimal import Decimal
+                cantidad = Decimal(str(detalle_completo['cantidad']))
+                precio = Decimal(str(detalle_completo['precio_unitario']))
+                subtotal = cantidad * precio
                 if 'descuento' in detalle_completo and detalle_completo['descuento']:
-                    subtotal -= detalle_completo['descuento'].get('monto', 0)
-                detalle_completo['subtotal'] = subtotal
+                    descuento = Decimal(str(detalle_completo['descuento'].get('monto', 0)))
+                    subtotal -= descuento
+                detalle_completo['subtotal'] = float(subtotal)
             
             # Calcular impuestos automáticamente si no existen
             if 'impuestos' not in detalle_completo or not detalle_completo['impuestos']:
-                impuesto_monto = detalle_completo['subtotal'] * 0.13  # IVA 13%
+                from decimal import Decimal
+                subtotal_decimal = Decimal(str(detalle_completo['subtotal']))
+                impuesto_monto = float(subtotal_decimal * Decimal('0.13'))  # IVA 13%
                 detalle_completo['impuestos'] = [{
                     'codigo': '01',  # IVA
                     'codigo_tarifa': '08',  # 13%
@@ -113,11 +155,14 @@ class XMLGeneratorV44:
                 }]
                 detalle_completo['impuesto_neto'] = impuesto_monto
             else:
-                detalle_completo['impuesto_neto'] = sum(imp['monto'] for imp in detalle_completo['impuestos'])
+                total_impuestos = sum(imp.get('monto', 0) or 0 for imp in detalle_completo['impuestos'])
+                detalle_completo['impuesto_neto'] = total_impuestos
             
             # Calcular monto total línea
             if 'monto_total_linea' not in detalle_completo:
-                detalle_completo['monto_total_linea'] = detalle_completo['subtotal'] + detalle_completo['impuesto_neto']
+                subtotal = detalle_completo.get('subtotal', 0) or 0
+                impuesto_neto = detalle_completo.get('impuesto_neto', 0) or 0
+                detalle_completo['monto_total_linea'] = subtotal + impuesto_neto
             
             detalles_completos.append(detalle_completo)
         
@@ -127,20 +172,28 @@ class XMLGeneratorV44:
         """Completar resumen de factura con campos obligatorios"""
         resumen_completo = resumen.copy()
         
+        # Validar y asignar código de moneda
+        codigo_moneda = resumen_completo.get('codigo_tipo_moneda', 'CRC')
+        es_valida, mensaje = validar_moneda(codigo_moneda)
+        if not es_valida:
+            logger.warning(f"⚠️ Código de moneda: {mensaje}. Usando CRC por defecto.")
+            codigo_moneda = 'CRC'
+        
         # Valores por defecto para campos obligatorios
         defaults = {
-            'codigo_tipo_moneda': 'CRC',
+            'codigo_tipo_moneda': codigo_moneda,
             'tipo_cambio': 1.00000,
-            'total_servicios_gravados': resumen.get('total_venta', 0),
+            'total_servicios_gravados': resumen.get('total_venta', 0) or 0.00000,
             'total_servicios_exentos': 0.00000,
             'total_servicios_exonerados': 0.00000,
             'total_mercaderias_gravadas': 0.00000,
             'total_mercaderias_exentas': 0.00000,
             'total_mercaderias_exoneradas': 0.00000,
-            'total_gravado': resumen.get('total_venta', 0),
+            'total_gravado': resumen.get('total_venta', 0) or 0.00000,
             'total_exento': 0.00000,
             'total_exonerado': 0.00000,
             'total_descuentos': 0.00000,
+            'total_impuesto': resumen.get('total_impuestos', 0) or 0.00000,
             'total_iva_devuelto': 0.00000,
             'total_otros_cargos': 0.00000
         }
