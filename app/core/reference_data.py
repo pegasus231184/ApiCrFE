@@ -354,6 +354,69 @@ def validar_ubicacion(provincia: str, canton: str, distrito: str) -> tuple[bool,
     return True, ""
 
 # Función helper para validar monedas
+# Códigos de Condición de Venta según XSD v4.4
+CONDICIONES_VENTA = {
+    "01": "Contado",
+    "02": "Crédito", 
+    "03": "Consignación",
+    "04": "Apartado",
+    "05": "Arrendamiento con opción de compra",
+    "06": "Arrendamiento en función financiera", 
+    "07": "Cobro a favor de un tercero",
+    "08": "Servicios prestados al Estado a crédito",
+    "09": "Pago del servicio prestado al Estado",
+    "10": "Venta a crédito en IVA hasta 90 días (Artículo 27, LIVA)",
+    "11": "Pago de venta a crédito en IVA hasta 90 días",
+    "12": "Venta Mercancía No Nacionalizada",
+    "13": "Venta Bienes Usados No Contribuyente", 
+    "14": "Arrendamiento Operativo",
+    "15": "Arrendamiento Financiero",
+    "99": "Otros"
+}
+
+# Códigos de Medio de Pago según XSD v4.4  
+MEDIOS_PAGO = {
+    "01": "Efectivo",
+    "02": "Tarjeta",
+    "03": "Cheque", 
+    "04": "Transferencia - depósito bancario",
+    "05": "Recaudado por terceros",
+    "99": "Otros"
+}
+
+# Códigos de Tipo de Transacción según XSD v4.4
+TIPOS_TRANSACCION = {
+    "01": "Venta",
+    "02": "Reemplazo de producto",
+    "03": "Regalo", 
+    "04": "Devolución de producto"
+}
+
+# Códigos de Descuento según XSD v4.4
+CODIGOS_DESCUENTO = {
+    "01": "Regalía",
+    "02": "Descuento comercial general",
+    "03": "Bonificación",
+    "04": "Pronto pago",
+    "05": "Por volumen de ventas",
+    "99": "Otros"
+}
+
+# Códigos de Impuesto según XSD v4.4
+CODIGOS_IMPUESTO = {
+    "01": "Impuesto al Valor Agregado",
+    "02": "Impuesto Selectivo de Consumo", 
+    "03": "Impuesto Único a los Combustibles",
+    "04": "Impuesto Específico de Bebidas Alcohólicas",
+    "05": "Impuesto Específico sobre las bebidas envasadas sin contenido alcohólico y jabones de tocador",
+    "06": "Impuesto a los Productos de Tabaco",
+    "07": "IVA (cálculo especial)",
+    "08": "IVA Régimen de Bienes Usados (Factor)",
+    "12": "Impuesto Específico al Cemento",
+    "13": "Impuesto para el Fortalecimiento del Crédito Público (Timbre)",
+    "99": "Otros"
+}
+
 def validar_moneda(codigo_moneda: str) -> tuple[bool, str]:
     """
     Validar código de moneda según ISO 4217
@@ -405,3 +468,33 @@ def obtener_info_ubicacion(provincia: str, canton: str = None, distrito: str = N
             }
     
     return info
+
+def validar_condicion_venta(codigo: str) -> tuple[bool, str]:
+    """Validar código de condición de venta"""
+    if not codigo or codigo not in CONDICIONES_VENTA:
+        return False, f"Código de condición de venta '{codigo}' no es válido"
+    return True, f"Condición de venta válida: {CONDICIONES_VENTA[codigo]}"
+
+def validar_medio_pago(codigo: str) -> tuple[bool, str]:
+    """Validar código de medio de pago"""
+    if not codigo or codigo not in MEDIOS_PAGO:
+        return False, f"Código de medio de pago '{codigo}' no es válido"
+    return True, f"Medio de pago válido: {MEDIOS_PAGO[codigo]}"
+
+def validar_tipo_transaccion(codigo: str) -> tuple[bool, str]:
+    """Validar código de tipo de transacción"""
+    if not codigo or codigo not in TIPOS_TRANSACCION:
+        return False, f"Código de tipo de transacción '{codigo}' no es válido"
+    return True, f"Tipo de transacción válido: {TIPOS_TRANSACCION[codigo]}"
+
+def validar_codigo_descuento(codigo: str) -> tuple[bool, str]:
+    """Validar código de descuento"""
+    if not codigo or codigo not in CODIGOS_DESCUENTO:
+        return False, f"Código de descuento '{codigo}' no es válido"
+    return True, f"Código de descuento válido: {CODIGOS_DESCUENTO[codigo]}"
+
+def validar_codigo_impuesto(codigo: str) -> tuple[bool, str]:
+    """Validar código de impuesto"""
+    if not codigo or codigo not in CODIGOS_IMPUESTO:
+        return False, f"Código de impuesto '{codigo}' no es válido"
+    return True, f"Código de impuesto válido: {CODIGOS_IMPUESTO[codigo]}"

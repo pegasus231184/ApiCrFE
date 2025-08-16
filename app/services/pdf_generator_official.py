@@ -209,7 +209,7 @@ class PDFGeneratorOfficial:
         }
     
     def _parsear_detalle_servicios(self, root) -> List[Dict[str, Any]]:
-        """Parsear detalle de servicios"""
+        """Parsear detalle de servicios incluyendo campos especializados"""
         detalles = []
         
         for linea in root.findall('.//LineaDetalle'):
@@ -222,7 +222,16 @@ class PDFGeneratorOfficial:
                 'precio_unitario': self._get_text(linea, 'PrecioUnitario'),
                 'monto_total': self._get_text(linea, 'MontoTotal'),
                 'subtotal': self._get_text(linea, 'SubTotal'),
-                'monto_total_linea': self._get_text(linea, 'MontoTotalLinea')
+                'monto_total_linea': self._get_text(linea, 'MontoTotalLinea'),
+                # Campos especializados
+                'tipo_transaccion': self._get_text(linea, 'TipoTransaccion'),
+                'registro_medicamento': self._get_text(linea, 'RegistroMedicamento'),
+                'forma_farmaceutica': self._get_text(linea, 'FormaFarmaceutica'),
+                'numero_vin_serie': [vin.text for vin in linea.findall('.//NumeroVINoSerie') if vin.text],
+                # Código comercial
+                'codigo_comercial': self._parsear_codigo_comercial(linea),
+                # Descuentos
+                'descuentos': self._parsear_descuentos(linea)
             }
             detalles.append(detalle)
         
@@ -292,7 +301,7 @@ class PDFGeneratorOfficial:
             ['Número:', datos.get('numero_consecutivo', '')],
             ['Fecha:', self._formatear_fecha(datos.get('fecha_emision', ''))],
             ['Clave:', datos.get('clave', '')],
-            ['Condición de Venta:', self._obtener_condicion_venta(datos.get('condicion_venta', ''))],
+            ['Condición de Venta:', self._obtener_condicion_venta_completa(datos)],
             ['Medio de Pago:', ', '.join(self._obtener_medios_pago(datos.get('medio_pago', [])))],
             ['Moneda:', 'Colones Costarricenses (CRC)']
         ]
@@ -360,25 +369,58 @@ class PDFGeneratorOfficial:
         # Título de la sección
         story.append(Paragraph("<b>DETALLE DE PRODUCTOS/SERVICIOS</b>", self.styles['Heading2']))
         
-        # Encabezados de la tabla
-        headers = ['#', 'Descripción', 'Cant.', 'U.M.', 'Precio Unit.', 'Total Línea']
+        # Encabezados de la tabla expandida
+        headers = ['#', 'Descripción', 'Cant.', 'U.M.', 'Tipo Trans.', 'Precio Unit.', 'Total Línea']
         data = [headers]
         
         # Agregar detalles
         detalles = datos.get('detalles', [])
         for detalle in detalles:
+            # Construir descripción expandida con campos especializados
+            descripcion_completa = detalle.get('detalle', '')
+            
+            # Agregar información especializada si existe
+            info_especializada = []
+            
+            # Información de medicamentos
+            if detalle.get('registro_medicamento'):
+                info_especializada.append(f"Reg. Medicamento: {detalle['registro_medicamento']}")
+            if detalle.get('forma_farmaceutica'):
+                info_especializada.append(f"Forma Farmacéutica: {detalle['forma_farmaceutica']}")
+            
+            # Información de vehículos (VIN/Serie)
+            if detalle.get('numero_vin_serie'):
+                vin_series = detalle['numero_vin_serie']
+                if isinstance(vin_series, list):
+                    info_especializada.append(f"VIN/Serie: {', '.join(vin_series[:2])}{'...' if len(vin_series) > 2 else ''}")
+                else:
+                    info_especializada.append(f"VIN/Serie: {vin_series}")
+            
+            # Códigos comerciales
+            if detalle.get('codigo_comercial'):
+                codigo_com = detalle['codigo_comercial']
+                info_especializada.append(f"Código: {codigo_com.get('codigo', '')}")
+            
+            # Agregar información especializada a la descripción
+            if info_especializada:
+                descripcion_completa += f"\n{' | '.join(info_especializada)}"
+            
+            # Mapear tipo de transacción
+            tipo_trans = self._obtener_tipo_transaccion(detalle.get('tipo_transaccion', '01'))
+            
             fila = [
                 detalle.get('numero_linea', ''),
-                detalle.get('detalle', ''),
+                descripcion_completa,
                 self._formatear_numero(detalle.get('cantidad', '0')),
                 detalle.get('unidad_medida', ''),
+                tipo_trans,
                 self._formatear_moneda(detalle.get('precio_unitario', '0')),
                 self._formatear_moneda(detalle.get('monto_total_linea', '0'))
             ]
             data.append(fila)
         
-        # Crear tabla
-        table = Table(data, colWidths=[10*mm, 80*mm, 15*mm, 15*mm, 25*mm, 25*mm])
+        # Crear tabla con columnas ajustadas para el nuevo campo
+        table = Table(data, colWidths=[8*mm, 70*mm, 12*mm, 12*mm, 18*mm, 22*mm, 25*mm])
         table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
@@ -400,9 +442,35 @@ class PDFGeneratorOfficial:
         
         return story
     
+    def _parsear_codigo_comercial(self, linea) -> Dict[str, str]:
+        """Parsear código comercial de una línea"""
+        codigo_elem = linea.find('.//CodigoComercial')
+        if codigo_elem is not None:
+            return {
+                'tipo': self._get_text(codigo_elem, 'Tipo'),
+                'codigo': self._get_text(codigo_elem, 'Codigo')
+            }
+        return {}
+    
+    def _parsear_descuentos(self, linea) -> List[Dict[str, Any]]:
+        """Parsear descuentos de una línea"""
+        descuentos = []
+        for desc in linea.findall('.//Descuento'):
+            descuento = {
+                'monto': self._get_text(desc, 'MontoDescuento'),
+                'naturaleza': self._get_text(desc, 'NaturalezaDescuento'),
+                'codigo': self._get_text(desc, 'CodigoDescuento'),
+                'otros': self._get_text(desc, 'DescuentoOtros')
+            }
+            descuentos.append(descuento)
+        return descuentos
+    
     def _crear_resumen_financiero(self, datos: Dict[str, Any]) -> List:
         """Crear resumen financiero"""
         story = []
+        
+        # Agregar sección de descuentos si existen
+        story.extend(self._crear_seccion_descuentos(datos))
         
         resumen = datos.get('resumen', {})
         
@@ -545,6 +613,88 @@ class PDFGeneratorOfficial:
             return f"CRC {monto:,.2f}"
         except:
             return f"CRC {monto_str}"
+    
+    def _obtener_tipo_transaccion(self, codigo: str) -> str:
+        """Obtener descripción de tipo de transacción"""
+        from app.core.reference_data import TIPOS_TRANSACCION
+        return TIPOS_TRANSACCION.get(codigo, codigo or 'Venta')
+    
+    def _obtener_condicion_venta_completa(self, datos: Dict[str, Any]) -> str:
+        """Obtener descripción completa de condición de venta"""
+        from app.core.reference_data import CONDICIONES_VENTA
+        codigo = datos.get('condicion_venta', '01')
+        descripcion = CONDICIONES_VENTA.get(codigo, codigo)
+        
+        # Agregar detalles adicionales si existen
+        if datos.get('condicion_venta_otros'):
+            descripcion += f" - {datos['condicion_venta_otros']}"
+        
+        return descripcion
+    
+    def _crear_seccion_descuentos(self, datos: Dict[str, Any]) -> List:
+        """Crear sección de descuentos si existen"""
+        story = []
+        
+        # Recopilar todos los descuentos de todas las líneas
+        descuentos_totales = []
+        detalles = datos.get('detalles', [])
+        
+        for detalle in detalles:
+            if detalle.get('descuentos'):
+                for desc in detalle['descuentos']:
+                    if desc.get('monto') and float(desc['monto']) > 0:
+                        descuentos_totales.append({
+                            'linea': detalle.get('numero_linea', ''),
+                            'monto': desc.get('monto', '0'),
+                            'naturaleza': desc.get('naturaleza', ''),
+                            'codigo': desc.get('codigo', ''),
+                            'otros': desc.get('otros', '')
+                        })
+        
+        if descuentos_totales:
+            # Título de la sección
+            story.append(Paragraph("<b>DESCUENTOS APLICADOS</b>", self.styles['Heading2']))
+            
+            # Crear tabla de descuentos
+            headers = ['Línea', 'Tipo', 'Descripción', 'Monto']
+            data = [headers]
+            
+            from app.core.reference_data import CODIGOS_DESCUENTO
+            
+            for desc in descuentos_totales:
+                tipo_desc = CODIGOS_DESCUENTO.get(desc['codigo'], desc['codigo'])
+                if desc['codigo'] == '99' and desc['otros']:
+                    tipo_desc = desc['otros']
+                
+                fila = [
+                    desc['linea'],
+                    tipo_desc,
+                    f"Naturaleza: {desc['naturaleza']}",
+                    self._formatear_moneda(desc['monto'])
+                ]
+                data.append(fila)
+            
+            table = Table(data, colWidths=[15*mm, 40*mm, 40*mm, 25*mm])
+            table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('ALIGN', (1, 1), (2, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black),
+                ('BOX', (0, 0), (-1, -1), 0.25, colors.black),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 12))
+        
+        return story
 
 # Instancia global
 pdf_generator_official = PDFGeneratorOfficial()
