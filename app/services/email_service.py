@@ -73,32 +73,42 @@ class EmailService:
             tipo_doc = self.obtener_tipo_documento(datos_factura.get('numero_consecutivo', ''))
             msg['Subject'] = f"{tipo_doc} - {datos_factura.get('numero_consecutivo', 'N/A')}"
             
-            # Nota: Adjuntos XML y PDF omitidos temporalmente para simplificar debugging
-            
-            # Enviar correo usando send_email para mayor compatibilidad
-            # Preparar cuerpo del mensaje
+            # Cuerpo del correo
             body_html = self.crear_cuerpo_email(datos_factura, tipo_doc)
+            msg.attach(MIMEText(body_html, 'html', 'utf-8'))
             
-            # Simplificar envío usando send_email
-            response = self.ses_client.send_email(
+            # Adjuntar XML si se proporciona
+            if xml_content:
+                xml_attachment = MIMEApplication(xml_content.encode('utf-8'), _subtype='xml')
+                xml_attachment.add_header(
+                    'Content-Disposition', 
+                    'attachment', 
+                    filename=f"factura_{datos_factura.get('numero_consecutivo', 'N/A')}.xml"
+                )
+                msg.attach(xml_attachment)
+            
+            # Adjuntar PDF si se proporciona
+            if pdf_content and len(pdf_content) > 0:
+                pdf_attachment = MIMEApplication(pdf_content, _subtype='pdf')
+                pdf_attachment.add_header(
+                    'Content-Disposition', 
+                    'attachment', 
+                    filename=f"factura_{datos_factura.get('numero_consecutivo', 'N/A')}.pdf"
+                )
+                msg.attach(pdf_attachment)
+            
+            # Preparar destinatarios
+            destinations = [destinatario]
+            if cc:
+                destinations.extend(cc)
+            if bcc:
+                destinations.extend(bcc)
+            
+            # Enviar correo usando send_raw_email para adjuntos
+            response = self.ses_client.send_raw_email(
                 Source=self.from_email,
-                Destination={
-                    'ToAddresses': [destinatario],
-                    'CcAddresses': cc or [],
-                    'BccAddresses': bcc or []
-                },
-                Message={
-                    'Subject': {
-                        'Data': f"{tipo_doc} - {datos_factura.get('numero_consecutivo', 'N/A')}",
-                        'Charset': 'UTF-8'
-                    },
-                    'Body': {
-                        'Html': {
-                            'Data': body_html,
-                            'Charset': 'UTF-8'
-                        }
-                    }
-                }
+                Destinations=destinations,
+                RawMessage={'Data': msg.as_string()}
             )
             
             message_id = response['MessageId']

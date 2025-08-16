@@ -1,14 +1,13 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import List
 from app.schemas.factura import FacturaCreate, FacturaResponse, FacturaElectronica
-from app.services.xml_generator import XMLGenerator
+from app.services.xml_generator_official import xml_generator_official
 from app.services.xml_signer_simple import signer
 from app.services.hacienda_client import HaciendaClient
 import uuid
 from datetime import datetime
 
 router = APIRouter()
-xml_generator = XMLGenerator()
 hacienda_client = HaciendaClient()
 
 @router.post("/", response_model=FacturaResponse, summary="Crear Factura Electrónica")
@@ -43,7 +42,7 @@ async def crear_factura(
             resumen_factura=factura_data.resumen_factura
         )
         
-        xml_sin_firmar = xml_generator.generar_xml_factura(factura)
+        xml_sin_firmar = xml_generator_official.generar_xml_factura(factura)
         
         xml_firmado = None
         if firmar:
@@ -231,7 +230,7 @@ async def crear_factura_exportacion(
             resumen_factura=factura_data.resumen_factura
         )
         
-        xml_sin_firmar = xml_generator.generar_xml_factura(factura)
+        xml_sin_firmar = xml_generator_official.generar_xml_factura(factura)
         
         xml_firmado = None
         if firmar:

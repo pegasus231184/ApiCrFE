@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
+    # Proveedor de Sistemas (obligatorio v4.4)
+    proveedor_sistemas: str = "310277607903"  # Cédula del proveedor de sistemas
+    
     # Amazon SES Configuration
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
